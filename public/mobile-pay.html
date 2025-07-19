@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mobile Payment</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .payment-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 30px;
+            text-align: center;
+            max-width: 400px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .payment-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .amount {
+            font-size: 2.5rem;
+            font-weight: bold;
+            color: #333;
+            margin: 20px 0;
+        }
+
+        .currency {
+            font-size: 1.2rem;
+            color: #666;
+            margin-bottom: 20px;
+        }
+
+        .payment-details {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            text-align: left;
+        }
+
+        .payment-detail {
+            display: flex;
+            justify-content: space-between;
+            margin: 10px 0;
+            padding: 5px 0;
+            border-bottom: 1px solid #e9ecef;
+        }
+
+        .payment-detail:last-child {
+            border-bottom: none;
+            font-weight: bold;
+            font-size: 1.1rem;
+        }
+
+        .pay-button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 20px 40px;
+            border-radius: 50px;
+            font-size: 1.2rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin: 20px 0;
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .pay-button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 30px rgba(102, 126, 234, 0.4);
+        }
+
+        .pay-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: none;
+        }
+
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .status.pending {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .status.processing {
+            background: #cce5ff;
+            color: #004085;
+            border: 1px solid #b3d7ff;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            animation: successPulse 2s ease-in-out;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        @keyframes successPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .success-icon {
+            font-size: 3rem;
+            color: #28a745;
+            margin: 20px 0;
+        }
+
+        .payment-id {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.8rem;
+            color: #495057;
+            margin: 20px 0;
+            word-break: break-all;
+        }
+
+        .back-link {
+            color: #667eea;
+            text-decoration: none;
+            font-weight: 500;
+            margin-top: 20px;
+            display: inline-block;
+        }
+
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <div class="payment-container">
+        <h1>Mobile Payment</h1>
+        
+        <div class="amount">$<span id="amount">99.99</span></div>
+        <div class="currency">USD</div>
+        
+        <div class="payment-details">
+            <div class="payment-detail">
+                <span>Payment ID:</span>
+                <span id="paymentId"></span>
+            </div>
+            <div class="payment-detail">
+                <span>Amount:</span>
+                <span>$<span id="amountDetail">99.99</span></span>
+            </div>
+            <div class="payment-detail">
+                <span>Processing Fee:</span>
+                <span>$0.00</span>
+            </div>
+            <div class="payment-detail">
+                <span>Total:</span>
+                <span>$<span id="totalAmount">99.99</span></span>
+            </div>
+        </div>
+        
+        <div class="status pending" id="status">
+            Ready to pay
+        </div>
+        
+        <button class="pay-button" id="payButton" onclick="processPayment()">
+            Pay Now
+        </button>
+        
+        <div id="successMessage" style="display: none;">
+            <div class="success-icon">✓</div>
+            <h2>Payment Successful!</h2>
+            <p>Your payment has been processed successfully.</p>
+            <a href="/checkout" class="back-link">Back to Checkout</a>
+        </div>
+        
+        <div id="errorMessage" style="display: none;">
+            <h2>Payment Failed</h2>
+            <p>There was an error processing your payment. Please try again.</p>
+            <button class="pay-button" onclick="processPayment()">Try Again</button>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Socket.IO
+        const socket = io();
+        
+        // Get URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const paymentId = urlParams.get('paymentId');
+        const amount = urlParams.get('amount') || '99.99';
+        
+        // Update UI with payment details
+        document.getElementById('amount').textContent = amount;
+        document.getElementById('amountDetail').textContent = amount;
+        document.getElementById('totalAmount').textContent = amount;
+        document.getElementById('paymentId').textContent = paymentId;
+        
+        // Join payment room
+        socket.emit('join-payment', { paymentId });
+        
+        function processPayment() {
+            const payButton = document.getElementById('payButton');
+            const status = document.getElementById('status');
+            
+            // Disable button and show processing
+            payButton.disabled = true;
+            payButton.textContent = 'Processing...';
+            status.className = 'status processing';
+            status.innerHTML = '<span class="loading"></span>Processing payment...';
+            
+            // Simulate payment processing
+            setTimeout(() => {
+                // Emit payment success event
+                socket.emit('payment-success', { 
+                    paymentId: paymentId,
+                    amount: amount,
+                    timestamp: new Date().toISOString()
+                });
+                
+                // Show success message
+                status.className = 'status success';
+                status.innerHTML = 'Payment successful!';
+                payButton.style.display = 'none';
+                document.getElementById('successMessage').style.display = 'block';
+                
+                // Redirect back to checkout after 3 seconds
+                setTimeout(() => {
+                    window.location.href = '/checkout';
+                }, 3000);
+                
+            }, 2000); // Simulate 2-second processing time
+        }
+        
+        // Socket event listeners
+        socket.on('connect', () => {
+            console.log('Connected to server');
+        });
+        
+        socket.on('payment-initiated', (data) => {
+            if (data.paymentId === paymentId) {
+                document.getElementById('status').className = 'status processing';
+                document.getElementById('status').innerHTML = '<span class="loading"></span>Payment initiated...';
+            }
+        });
+        
+        socket.on('payment-success', (data) => {
+            if (data.paymentId === paymentId) {
+                document.getElementById('status').className = 'status success';
+                document.getElementById('status').innerHTML = 'Payment successful!';
+                document.getElementById('payButton').style.display = 'none';
+                document.getElementById('successMessage').style.display = 'block';
+            }
+        });
+        
+        socket.on('payment-failed', (data) => {
+            if (data.paymentId === paymentId) {
+                document.getElementById('status').className = 'status error';
+                document.getElementById('status').innerHTML = 'Payment failed. Please try again.';
+                document.getElementById('payButton').disabled = false;
+                document.getElementById('payButton').textContent = 'Try Again';
+                document.getElementById('errorMessage').style.display = 'block';
+            }
+        });
+    </script>
+</body>
+</html> 

@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - Payment</title>
+    <script src="/socket.io/socket.io.js"></script>
+    <script>
+      
+        function showTextFallback() {
+            const qrContainer = document.getElementById('qrcode');
+            const paymentUrl = `${window.location.origin}/mobile-pay?paymentId=${paymentId}&amount=${document.getElementById('amount').textContent}`;
+            qrContainer.innerHTML = `
+                <div style="padding: 20px; text-align: center; color: #666; border: 2px dashed #ccc; border-radius: 10px;">
+                    <div style="font-size: 3rem; margin-bottom: 15px;">📱</div>
+                    <div style="font-weight: bold; margin-bottom: 15px; color: #333;">Payment Link</div>
+                    <div style="font-size: 0.9rem; word-break: break-all; background: #f8f9fa; padding: 10px; border-radius: 5px; margin: 10px 0;">${paymentUrl}</div>
+                    <div style="font-size: 0.8rem; color: #999; margin-top: 10px;">Click the mobile link below or copy this URL</div>
+                </div>
+            `;
+        }
+        
+        async function generateServerQR() {
+            try {
+                const response = await fetch(`/api/qr/${paymentId}/${document.getElementById('amount').textContent}`);
+                const data = await response.json();
+                
+                if (data.qrCode) {
+                    const qrContainer = document.getElementById('qrcode');
+                    qrContainer.innerHTML = `<img src="${data.qrCode}" alt="QR Code" style="max-width: 200px; height: auto;">`;
+                    console.log('Server-side QR code generated successfully');
+                } else {
+                    showTextFallback();
+                }
+            } catch (error) {
+                console.error('Server QR generation failed:', error);
+                showTextFallback();
+            }
+        }
+    </script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .checkout-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            padding: 40px;
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .checkout-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+        }
+
+        .amount {
+            font-size: 3rem;
+            font-weight: bold;
+            color: #333;
+            margin: 20px 0;
+        }
+
+        .currency {
+            font-size: 1.5rem;
+            color: #666;
+            margin-bottom: 30px;
+        }
+
+        .qr-container {
+            background: #f8f9fa;
+            border-radius: 15px;
+            padding: 30px;
+            margin: 30px 0;
+            border: 2px dashed #dee2e6;
+        }
+
+        #qrcode {
+            display: inline-block;
+            padding: 20px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .instructions {
+            color: #666;
+            margin: 20px 0;
+            line-height: 1.6;
+        }
+
+        .status {
+            margin: 20px 0;
+            padding: 15px;
+            border-radius: 10px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+        }
+
+        .status.pending {
+            background: #fff3cd;
+            color: #856404;
+            border: 1px solid #ffeaa7;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            animation: successPulse 2s ease-in-out;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        @keyframes successPulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .timer {
+            font-size: 1.2rem;
+            color: #666;
+            margin: 20px 0;
+        }
+
+        .payment-id {
+            background: #e9ecef;
+            padding: 10px;
+            border-radius: 8px;
+            font-family: monospace;
+            font-size: 0.9rem;
+            color: #495057;
+            margin: 20px 0;
+            word-break: break-all;
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-right: 10px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .success-icon {
+            font-size: 4rem;
+            color: #28a745;
+            margin: 20px 0;
+        }
+
+        .mobile-link {
+            display: none;
+            background: #667eea;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 25px;
+            text-decoration: none;
+            font-weight: 500;
+            margin: 20px 0;
+            transition: all 0.3s ease;
+        }
+
+        .mobile-link:hover {
+            background: #5a6fd8;
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .checkout-container {
+                padding: 20px;
+                margin: 10px;
+            }
+            
+            .amount {
+                font-size: 2.5rem;
+            }
+            
+            .qr-container {
+                padding: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="checkout-container">
+        <h1>Payment Checkout</h1>
+        
+        <div class="amount">$<span id="amount">99.99</span></div>
+        <div class="currency">USD</div>
+        
+        <div class="payment-id">
+            Payment ID: <span id="paymentId"></span>
+        </div>
+        
+        <div class="status pending" id="status">
+            <span class="loading"></span>
+            Waiting for payment...
+        </div>
+        
+        <div class="timer" id="timer">
+            Time remaining: <span id="timeLeft">01:00</span>
+        </div>
+        
+        <div class="qr-container">
+            <h3>Scan QR Code to Pay</h3>
+            <div id="qrcode">
+                <div style="padding: 20px; text-align: center; color: #666;">
+                    <div class="loading" style="margin: 0 auto 10px;"></div>
+                    <div>Generating QR Code...</div>
+                </div>
+            </div>
+            <div class="instructions">
+                Open your mobile payment app and scan this QR code to complete the payment
+            </div>
+        </div>
+        
+        <a href="#" class="mobile-link" id="mobileLink" style="display: none;">
+            Pay Now on Mobile
+        </a>
+        
+        <div id="successMessage" style="display: none;">
+            <div class="success-icon">✓</div>
+            <h2>Payment Successful!</h2>
+            <p>Thank you for your payment. You will receive a confirmation email shortly.</p>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Socket.IO
+        const socket = io();
+        
+        // Generate unique payment ID
+        const paymentId = 'PAY-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+        document.getElementById('paymentId').textContent = paymentId;
+        
+        // Generate QR code with payment URL
+        const paymentUrl = `${window.location.origin}/mobile-pay?paymentId=${paymentId}&amount=${document.getElementById('amount').textContent}`;
+        
+        function generateQRCode() {
+            
+                generateServerQR();
+           
+        }
+        
+        // Try to generate QR code
+        generateQRCode();
+        
+        // Timer countdown (1 minutes)
+        let timeLeft = 1 * 60; // 1 minutes in seconds
+        const timerElement = document.getElementById('timeLeft');
+        
+        const timer = setInterval(() => {
+            const minutes = Math.floor(timeLeft / 60);
+            const seconds = timeLeft % 60;
+            timerElement.textContent = `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            if (timeLeft <= 0) {
+                clearInterval(timer);
+                document.getElementById('status').className = 'status error';
+                document.getElementById('status').innerHTML = 'Payment timeout. Please try again.';
+            }
+            timeLeft--;
+        }, 1000);
+        
+        // Socket event listeners
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            socket.emit('join-payment', { paymentId });
+        });
+        
+        socket.on('payment-initiated', (data) => {
+            if (data.paymentId === paymentId) {
+                document.getElementById('status').className = 'status pending';
+                document.getElementById('status').innerHTML = '<span class="loading"></span>Payment initiated...';
+            }
+        });
+        
+        socket.on('payment-success', (data) => {
+            if (data.paymentId === paymentId) {
+                clearInterval(timer);
+                document.getElementById('status').className = 'status success';
+                document.getElementById('status').innerHTML = 'Payment successful!';
+                document.getElementById('timer').style.display = 'none';
+                document.querySelector('.qr-container').style.display = 'none';
+                document.getElementById('successMessage').style.display = 'block';
+            }
+        });
+        
+        socket.on('payment-failed', (data) => {
+            if (data.paymentId === paymentId) {
+                document.getElementById('status').className = 'status error';
+                document.getElementById('status').innerHTML = 'Payment failed. Please try again.';
+            }
+        });
+        
+        // Detect mobile device and show mobile link
+        if (/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)) {
+            document.getElementById('mobileLink').style.display = 'inline-block';
+            document.getElementById('mobileLink').href = paymentUrl;
+        }
+    </script>
+</body>
+</html> 
